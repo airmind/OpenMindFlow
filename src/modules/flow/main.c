@@ -53,7 +53,7 @@
 #include "led.h"
 #include "flow.h"
 #include "dcmi.h"
-#include "mt9v034.h"
+#include "ov7725.h"
 #include "gyro.h"
 #include "i2c.h"
 #include "usart.h"
@@ -410,7 +410,7 @@ int main(void)
 		float z_rate = z_rate_sensor; // z is correct
 
 		/* calculate focal_length in pixel */
-		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
+		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (1.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 		/* get sonar data */
 		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);

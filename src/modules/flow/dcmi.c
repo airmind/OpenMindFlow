@@ -91,8 +91,8 @@ void enable_image_capture(void)
 {
 	dcmi_clock_init();
 	dcmi_hw_init();
-	dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
-	mt9v034_context_configuration();
+	dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT] * 2);
+	ov7725_init();
 	dcmi_dma_enable();
 }
 
@@ -106,7 +106,7 @@ void dma_reconfigure(void)
 	if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 		dcmi_dma_init(FULL_IMAGE_SIZE);
 	else
-		dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
+		dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT] * 2);
 
 	dcmi_dma_enable();
 }
@@ -248,6 +248,7 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 
 	/* swap image buffers */
 	uint8_t * tmp_image = *current_image;
+	uint16_t i = 0;
 	*current_image = *previous_image;
 	*previous_image = tmp_image;
 
@@ -268,18 +269,27 @@ TODO(NB dma_copy_image_buffers is calling uavcan_run());
 	/* copy image */
 	if (dcmi_image_buffer_unused == 1)
 	{
-		for (uint16_t pixel = 0; pixel < image_size; pixel++)
-			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_1[pixel]);
+		i = 0;
+		for (uint16_t pixel = 0; pixel < image_size; pixel++) {
+			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_1[i]);
+			i = i + 2;
+		}
 	}
 	else if (dcmi_image_buffer_unused == 2)
 	{
-		for (uint16_t pixel = 0; pixel < image_size; pixel++)
-			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_2[pixel]);
+		i = 0;
+		for (uint16_t pixel = 0; pixel < image_size; pixel++) {
+			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_2[i]);
+			i = i + 2;
+		}
 	}
 	else
 	{
-		for (uint16_t pixel = 0; pixel < image_size; pixel++)
-			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_3[pixel]);
+		i = 0;
+		for (uint16_t pixel = 0; pixel < image_size; pixel++) {
+			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_3[i]);
+			i = i + 2;
+		}
 	}
 }
 
@@ -552,9 +562,9 @@ void dcmi_hw_init(void)
 	/* Configure I2C2 GPIOs */
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;//GPIO_Speed_2MHz
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;//GPIO_PuPd_NOPULL
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
 	/* I2C DeInit */
@@ -574,14 +584,16 @@ void dcmi_hw_init(void)
 	/* Initialize the I2C peripheral w/ selected parameters */
 	I2C_Init(I2C2, &I2C_InitStruct);
 
-	/* Initialize GPIOs for EXPOSURE and STANDBY lines of the camera */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
+	/* Initialize GPIOs for RST pin of the camera */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;//GPIO_Pin_2 | GPIO_Pin_3
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIOA, GPIO_Pin_2 | GPIO_Pin_3);
+	GPIO_ResetBits(GPIOA, GPIO_Pin_5);//GPIO_ResetBits(GPIOA, GPIO_Pin_2 | GPIO_Pin_3); --> pull down
+	GPIO_SetBits(GPIOA, GPIO_Pin_5);//pull up
+	
 }
 
 /**
@@ -604,7 +616,7 @@ void dcmi_dma_init(uint16_t buffer_size)
 	DCMI_InitStructure.DCMI_CaptureMode = DCMI_CaptureMode_Continuous;
 	DCMI_InitStructure.DCMI_SynchroMode = DCMI_SynchroMode_Hardware;
 	DCMI_InitStructure.DCMI_PCKPolarity = DCMI_PCKPolarity_Falling;
-	DCMI_InitStructure.DCMI_VSPolarity = DCMI_VSPolarity_Low;
+	DCMI_InitStructure.DCMI_VSPolarity = DCMI_VSPolarity_High;
 	DCMI_InitStructure.DCMI_HSPolarity = DCMI_HSPolarity_Low;
 	DCMI_InitStructure.DCMI_CaptureRate = DCMI_CaptureRate_All_Frame;
 	DCMI_InitStructure.DCMI_ExtendedDataMode = DCMI_ExtendedDataMode_8b;

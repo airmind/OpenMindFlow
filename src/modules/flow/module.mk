@@ -28,7 +28,7 @@ SRCS += 		main.c \
           communication.c \
           flow.c \
           dcmi.c \
-          mt9v034.c \
+          ov7725.c \
           gyro.c \
           usart.c \
           sonar.c \

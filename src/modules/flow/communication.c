@@ -42,7 +42,7 @@
 #include <mavlink.h>
 #include "settings.h"
 #include "usart.h"
-#include "mt9v034.h"
+#include "ov7725.h"
 #include "dcmi.h"
 #include "gyro.h"
 #include "debug.h"
@@ -241,7 +241,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							if(i == PARAM_SENSOR_POSITION)
 							{
 								set_sensor_position_settings((uint8_t) set.param_value);
-								mt9v034_context_configuration();
+								ov7725_init();
 								dma_reconfigure();
 								buffer_reset();
 							}
@@ -249,7 +249,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							/* handle low light mode and noise correction */
 							else if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR|| i == PARAM_IMAGE_TEST_PATTERN)
 							{
-								mt9v034_context_configuration();
+								ov7725_init();
 								dma_reconfigure();
 								buffer_reset();
 							}
@@ -257,7 +257,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							/* handle calibration on/off */
 							else if(i == PARAM_VIDEO_ONLY)
 							{
-								mt9v034_set_context();
+								ov7725_set_context();
 								dma_reconfigure();
 								buffer_reset();
 
