@@ -169,7 +169,7 @@ void ov7725_set_context()
 {
     /*TO DO*/
     uint8_t tmp = 0;
-    //tmp = ov7725_init();
+    tmp = ov7725_init();
     my_ret = 0xff00 | tmp;
 }
 
@@ -183,9 +183,16 @@ uint8_t ov7725_init() {
     ov7725_WriteReg(0x19, 0x07);
     ov7725_WriteReg(0x1a, 0xf0);
     ov7725_WriteReg(0x32, 0x00);
-    ov7725_WriteReg(0x29, 0x10);//width:  10->64 18->96 28->160
-    ov7725_WriteReg(0x2c, 0x20);//height: 20->64 30->96 3c->120
-    ov7725_WriteReg(0x2a, 0x00);
+
+    if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY])) {
+         ov7725_WriteReg(0x29, 0x24);//width:  10->64 18->96 28->160
+         ov7725_WriteReg(0x2c, 0x36);//height: 20->64 30->96 3c->120
+	}
+	else {
+         ov7725_WriteReg(0x29, 0x10);//width:  10->64 18->96 28->160
+         ov7725_WriteReg(0x2c, 0x20);//height: 20->64 30->96 3c->120
+	}
+	ov7725_WriteReg(0x2a, 0x00);
     ov7725_WriteReg(0x11, 0x00);
     ov7725_WriteReg(0x42, 0x7f);
     ov7725_WriteReg(0x4d, 0x09);
@@ -237,14 +244,12 @@ uint8_t ov7725_init() {
     ov7725_WriteReg(0x8b, 0xd7);
     ov7725_WriteReg(0x8c, 0xe8);
     ov7725_WriteReg(0x8d, 0x20);
-    
-    ov7725_WriteReg(0x3f, 0x05);
-    ov7725_WriteReg(0x0d, 0x81);
-    ov7725_WriteReg(0x13, 0xa1);
-    ov7725_WriteReg(0x00, 0x00);
-    ov7725_WriteReg(0x4d, 0x00);
-    ov7725_WriteReg(0xab, 0x0c);
-    ov7725_WriteReg(0x0e, 0x51);
+
+    ov7725_WriteReg(0x13, 0x20);//
+    ov7725_WriteReg(0x0e, 0x41);//
+    ov7725_WriteReg(0x00, 0x00);//AGC – Gain control gain setting
+    ov7725_WriteReg(0x08, 0x01);//exposure - high
+    ov7725_WriteReg(0x10, 0xe0);//exposure - low
 
     return (my_ret&0xff);
 }
