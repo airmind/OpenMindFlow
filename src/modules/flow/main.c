@@ -95,6 +95,9 @@ volatile uint32_t boot_time_ms = 0;
 /* boot time in 10 microseconds ticks */
 volatile uint32_t boot_time10_us = 0;
 
+volatile uint32_t wark_time = 0;
+volatile uint32_t measure_time = 0;
+
 /* timer constants */
 #define NTIMERS         	9
 #define TIMER_CIN       	0
@@ -113,8 +116,17 @@ volatile uint32_t boot_time10_us = 0;
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
 
+#define BRIGHTNESS_THRESHOLD_LOW 12
+#define BRIGHTNESS_THRESHOLD_HIGH 32
+#define BRIGHTNESS_COUNT 10
+
 static volatile unsigned timer[NTIMERS];
 static volatile unsigned timer_ms = MS_TIMER_COUNT;
+
+bool wark_brightness_low = 0;
+bool wark_brightness_high = 1;
+static volatile unsigned char wark_low_count = 0;
+static volatile unsigned char wark_high_count = 0;
 
 /* timer/system booleans */
 bool send_system_state_now = true;
@@ -122,6 +134,10 @@ bool receive_now = true;
 bool send_params_now = true;
 bool send_image_now = true;
 bool send_lpos_now = true;
+
+bool wark_sonar = false;
+bool wark_sonar_detect = false;
+bool wark_sonar_filter = false;
 
 /* local position estimate without orientation, useful for unit testing w/o FMU */
 static struct lpos_t {
@@ -157,7 +173,10 @@ void timer_update_ms(void)
 
 	if (timer[TIMER_SONAR] == 0)
 	{
-		sonar_trigger();
+		if(wark_sonar == false) {
+			wark_sonar = true;
+			GPIO_SetBits(GPIOE,GPIO_Pin_8);
+		}
 		timer[TIMER_SONAR] = SONAR_TIMER_COUNT;
 	}
 
@@ -200,6 +219,45 @@ void timer_update_ms(void)
 void timer_update(void)
 {
 	boot_time10_us++;
+
+	if(wark_sonar == true) {
+		wark_time++;
+		wark_sonar_filter = true;
+		if(wark_time == 2) {
+			wark_time = 0;
+			wark_sonar = false;
+			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
+		}
+	}
+
+	if(wark_sonar_filter == true) {
+		if(GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_0)) {
+			wark_sonar_detect = true;
+			measure_time++;
+		} else {
+			if(wark_sonar_detect == true) {
+				Sonar_Handler((measure_time - 1));
+				wark_sonar_detect = false;
+				measure_time = 0;
+				wark_sonar_filter = false;
+			}
+		}
+	}
+	
+	/*
+	if(wark_sonar == false) {
+		GPIO_SetBits(GPIOE,GPIO_Pin_8);
+		wark_sonar = true;
+		wark_time = 0;
+	} else if (wark_sonar == true) {
+		wark_time++;
+		if(wark_time == 2) {
+			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
+		} else if(wark_time == 10000) {
+			wark_sonar = false;
+		}
+	}
+	*/
 
 	/*  decrements every 10 microseconds*/
 	timer_ms--;
@@ -343,6 +401,8 @@ int main(void)
 	static uint32_t lasttime = 0;
 	uint32_t time_since_last_sonar_update= 0;
 
+	uint8_t brightness = 0;
+
 	uavcan_start();
 	/* main loop */
 	while (1)
@@ -361,6 +421,48 @@ int main(void)
 			}
 			delay(500);
 			continue;
+		}
+		
+		brightness = (uint8_t)mt9v034_ReadReg16(0xBC);
+
+		if(wark_brightness_low == 0) {
+			if(brightness < BRIGHTNESS_THRESHOLD_LOW) {
+				wark_low_count++;
+				if(wark_low_count == BRIGHTNESS_COUNT) {
+						wark_low_count = 0;
+
+						global_data.param[PARAM_IMAGE_LOW_LIGHT] = 1;
+						mt9v034_context_configuration();
+						dma_reconfigure();
+						buffer_reset();
+
+						wark_brightness_low = 1;
+						wark_brightness_high = 0;
+
+				}
+			} else {
+				wark_low_count = 0;
+			}
+		}
+
+		if(wark_brightness_high == 0) {
+			if(brightness > BRIGHTNESS_THRESHOLD_HIGH) {
+				wark_high_count++;
+				if(wark_high_count == BRIGHTNESS_COUNT) {
+						wark_high_count = 0;
+
+						global_data.param[PARAM_IMAGE_LOW_LIGHT] = 0;
+
+						mt9v034_context_configuration();
+						dma_reconfigure();
+						buffer_reset();
+
+						wark_brightness_low = 0;
+						wark_brightness_high = 1;
+				}
+			} else {
+				wark_high_count = 0;
+			}
 		}
 
 		/* calibration routine */
@@ -594,11 +696,15 @@ int main(void)
 
 				if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_FLOW]))
 				{
+#if 0 //flx todo
 					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
-
-
+#else
+					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), brightness,
+							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
+						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
+#endif
 					mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							integration_timespan, accumulated_flow_x, accumulated_flow_y,
 							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,

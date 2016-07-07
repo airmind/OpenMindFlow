@@ -45,6 +45,8 @@
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_tim.h"
 #include "stm32f4xx_dma.h"
+#include "stm32f4xx_exti.h"
+#include "stm32f4xx_syscfg.h"
 #include "misc.h"
 #include "utils.h"
 #include "usart.h"
@@ -56,17 +58,17 @@
 #define SONAR_MIN	0.12f		/** 0.12m sonar minimum distance */
 #define SONAR_MAX	3.5f		/** 3.50m sonar maximum distance */
 
-#define atoi(nptr)  strtol((nptr), NULL, 10)
+//#define atoi(nptr)  strtol((nptr), NULL, 10)
 extern uint32_t get_boot_time_us(void);
 
-static char data_buffer[5]; // array for collecting decoded data
+//static char data_buffer[5]; // array for collecting decoded data
 
 static volatile uint32_t last_measure_time = 0;
 static volatile uint32_t measure_time = 0;
 static volatile float dt = 0.0f;
 static volatile int valid_data;
-static volatile int data_counter = 0;
-static volatile int data_valid = 0;
+//static volatile int data_counter = 0;
+//static volatile int data_valid = 0;
 static volatile int new_value = 0;
 
 static volatile uint32_t sonar_measure_time_interrupt = 0;
@@ -83,6 +85,7 @@ float sonar_raw = 0.0f;  // m
 float sonar_mode = 0.0f;
 bool sonar_valid = false;				/**< the mode of all sonar measurements */
 
+#if 0 //flx todo
 /**
   * @brief  Triggers the sonar to measure the next value
   *
@@ -91,10 +94,12 @@ bool sonar_valid = false;				/**< the mode of all sonar measurements */
 void sonar_trigger(){
 	GPIO_SetBits(GPIOE, GPIO_Pin_8);
 }
+#endif
 
 /**
   * @brief  Sonar interrupt handler
   */
+#if 0  
 void UART4_IRQHandler(void)
 {
 	if (USART_GetITStatus(UART4, USART_IT_RXNE) != RESET)
@@ -155,6 +160,73 @@ void UART4_IRQHandler(void)
 		}
 	}
 }
+#else
+void TIM2_IRQHandler(void)
+{
+	if(TIM_GetITStatus(TIM2,TIM_IT_Update) != RESET){
+		TIM_ClearITPendingBit(TIM2,TIM_IT_Update);
+		return;
+	} else {
+		TIM_ClearITPendingBit(TIM2,TIM_IT_Update);
+		return;
+	}
+}
+
+/**
+  * @brief  Sonar calculate handler
+  */
+void Sonar_Handler(uint32_t TIM_Counter)
+{
+	float temp = 0.0;
+	temp = TIM_Counter * 18.7 / 10000.0;
+	if((temp > SONAR_MIN) && (temp < SONAR_MAX)) {
+
+		/* it is in normal sensor range, take it */
+		last_measure_time = measure_time;
+		measure_time = get_boot_time_us();
+		sonar_measure_time_interrupt = measure_time;
+
+		dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
+
+		valid_data = temp;
+		sonar_mode = insert_sonar_value_and_get_mode_value(valid_data);
+		new_value = 1;
+		sonar_valid = true;
+
+	} else {
+		sonar_valid = false;
+	}
+}
+
+/**
+ * @brief Configures the timer2
+ */
+void TIM2_Init()
+{
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2,ENABLE);
+
+	TIM_TimeBaseStructure.TIM_Period = 5000;
+	TIM_TimeBaseStructure.TIM_Prescaler = (8400);
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM2,&TIM_TimeBaseStructure);
+
+	TIM_ITConfig(TIM2,TIM_IT_Update | TIM_IT_Trigger,ENABLE);
+
+	NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+//	TIM_Cmd(TIM2,ENABLE);
+
+}
+
+#endif
 
 /**
   * @brief  Basic Kalman filter
@@ -207,6 +279,7 @@ bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 /**
  * @brief  Configures the sonar sensor Peripheral.
  */
+ #if 0 //flx todo
 void sonar_config(void)
 {
 	valid_data = 0;
@@ -270,6 +343,58 @@ void sonar_config(void)
 	USART_Cmd(UART4, ENABLE);
 
 }
+#else
+void sonar_config(void)
+{
+	valid_data = 0;
+
+	GPIO_InitTypeDef GPIO_InitStructure;
+//	EXTI_InitTypeDef EXTI_InitStructure;
+//	NVIC_InitTypeDef NVIC_InitStructure;
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE,ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG,ENABLE);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;       //TRIG
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOE,&GPIO_InitStructure);
+
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+//	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOC,&GPIO_InitStructure);
+/*
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC,EXTI_PinSource0);
+
+	EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStructure);
+
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 15;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+*/
+}
+
+void Sonar_Measure(void)
+{
+	int i = 3360;
+	GPIO_SetBits(GPIOE,GPIO_Pin_8);
+	while(i--);
+	GPIO_ResetBits(GPIOE,GPIO_Pin_8);
+}
+#endif
+
 
 uint32_t get_sonar_measure_time()
 {

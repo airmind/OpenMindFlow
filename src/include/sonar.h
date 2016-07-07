@@ -46,7 +46,21 @@ void sonar_config(void);
 /**
   * @brief  Sonar interrupt handler
   */
+#if 0 //flx todo
 void UART4_IRQHandler(void);
+#else
+void TIM2_IRQHandler(void);
+
+/**
+  * @brief Configures the timer2
+  */
+void TIM2_Init(void);
+
+/**
+  * @brief	EXTI0 interrupt handler
+  */
+void Sonar_Handler(uint32_t TIM_Counter);
+#endif
 
 /**
   * @brief  Triggers the sonar to measure the next value
@@ -69,5 +83,7 @@ uint32_t get_sonar_measure_time(void);
   * @brief Get the timestamp of the new sonar value when the interrupt is triggered
   */
 uint32_t get_sonar_measure_time_interrupt(void);
+
+void Sonar_Measure(void);
 
 #endif /* SONAR_H_ */
