@@ -46,9 +46,7 @@ void sonar_config(void);
 /**
   * @brief  Sonar interrupt handler
   */
-#if 0 //flx todo
-void UART4_IRQHandler(void);
-#else
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 void TIM2_IRQHandler(void);
 
 /**
@@ -60,6 +58,8 @@ void TIM2_Init(void);
   * @brief	EXTI0 interrupt handler
   */
 void Sonar_Handler(uint32_t TIM_Counter);
+#else
+void UART4_IRQHandler(void);
 #endif
 
 /**
@@ -84,6 +84,8 @@ uint32_t get_sonar_measure_time(void);
   */
 uint32_t get_sonar_measure_time_interrupt(void);
 
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 void Sonar_Measure(void);
+#endif
 
 #endif /* SONAR_H_ */

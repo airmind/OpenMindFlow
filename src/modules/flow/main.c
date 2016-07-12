@@ -95,8 +95,10 @@ volatile uint32_t boot_time_ms = 0;
 /* boot time in 10 microseconds ticks */
 volatile uint32_t boot_time10_us = 0;
 
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 volatile uint32_t wark_time = 0;
 volatile uint32_t measure_time = 0;
+#endif
 
 /* timer constants */
 #define NTIMERS         	9
@@ -116,17 +118,8 @@ volatile uint32_t measure_time = 0;
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
 
-#define BRIGHTNESS_THRESHOLD_LOW 12
-#define BRIGHTNESS_THRESHOLD_HIGH 32
-#define BRIGHTNESS_COUNT 10
-
 static volatile unsigned timer[NTIMERS];
 static volatile unsigned timer_ms = MS_TIMER_COUNT;
-
-bool wark_brightness_low = 0;
-bool wark_brightness_high = 1;
-static volatile unsigned char wark_low_count = 0;
-static volatile unsigned char wark_high_count = 0;
 
 /* timer/system booleans */
 bool send_system_state_now = true;
@@ -135,9 +128,20 @@ bool send_params_now = true;
 bool send_image_now = true;
 bool send_lpos_now = true;
 
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
+#define BRIGHTNESS_THRESHOLD_LOW 12
+#define BRIGHTNESS_THRESHOLD_HIGH 32
+#define BRIGHTNESS_COUNT 10
+
+bool wark_brightness_low = 0;
+bool wark_brightness_high = 1;
+static volatile unsigned char wark_low_count = 0;
+static volatile unsigned char wark_high_count = 0;
+
 bool wark_sonar = false;
 bool wark_sonar_detect = false;
 bool wark_sonar_filter = false;
+#endif
 
 /* local position estimate without orientation, useful for unit testing w/o FMU */
 static struct lpos_t {
@@ -173,10 +177,14 @@ void timer_update_ms(void)
 
 	if (timer[TIMER_SONAR] == 0)
 	{
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 		if(wark_sonar == false) {
 			wark_sonar = true;
 			GPIO_SetBits(GPIOE,GPIO_Pin_8);
 		}
+#else
+		sonar_trigger();
+#endif
 		timer[TIMER_SONAR] = SONAR_TIMER_COUNT;
 	}
 
@@ -220,6 +228,7 @@ void timer_update(void)
 {
 	boot_time10_us++;
 
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 	if(wark_sonar == true) {
 		wark_time++;
 		wark_sonar_filter = true;
@@ -258,6 +267,7 @@ void timer_update(void)
 		}
 	}
 	*/
+#endif
 
 	/*  decrements every 10 microseconds*/
 	timer_ms--;
@@ -401,7 +411,9 @@ int main(void)
 	static uint32_t lasttime = 0;
 	uint32_t time_since_last_sonar_update= 0;
 
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 	uint8_t brightness = 0;
+#endif
 
 	uavcan_start();
 	/* main loop */
@@ -422,7 +434,8 @@ int main(void)
 			delay(500);
 			continue;
 		}
-		
+
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 		brightness = (uint8_t)mt9v034_ReadReg16(0xBC);
 
 		if(wark_brightness_low == 0) {
@@ -464,6 +477,7 @@ int main(void)
 				wark_high_count = 0;
 			}
 		}
+#endif
 
 		/* calibration routine */
 		if(FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
@@ -696,12 +710,13 @@ int main(void)
 
 				if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_FLOW]))
 				{
-#if 0 //flx todo
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
+					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), brightness,
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 #else
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), brightness,
+					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 #endif

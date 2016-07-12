@@ -123,7 +123,11 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_GYRO_COMPENSATION_THRESHOLD], "GYRO_COMP_THR");
 	global_data.param_access[PARAM_GYRO_COMPENSATION_THRESHOLD] = READ_WRITE;
 
+#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 	global_data.param[PARAM_SONAR_FILTERED] = 1;
+#else
+	global_data.param[PARAM_SONAR_FILTERED] = 0;
+#endif
 	strcpy(global_data.param_name[PARAM_SONAR_FILTERED], "SONAR_FILTERED");
 	global_data.param_access[PARAM_SONAR_FILTERED] = READ_WRITE;
 
