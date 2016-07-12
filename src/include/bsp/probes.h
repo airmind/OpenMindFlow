@@ -38,7 +38,7 @@
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_gpio.h"
 
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V1)
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V1) || defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 #undef CONFIG_HAS_PROBES
 #endif
 

@@ -1,8 +1,6 @@
 /****************************************************************************
- * include/board/board.h
  *
- *   Copyright (C) 2015 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ *   Copyright (c) 2012-2015 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -14,7 +12,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
+ * 3. Neither the name PX4 nor the names of its contributors may be
  *    used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,86 +30,49 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-/* This header file contains function prototypes for the interfaces between
- * (1) the nuttx core-code, (2) the microprocessor specific logic that
- * resides under the arch/ sub-directory, and (3) the board-specific logic
- * that resides under configs/
- *
- * Naming conventions:
- *
- * 1. Common Microprocessor Interfaces.
- *
- *    Any interface that is common across all microprocessors should be
- *    prefixed with up_ and prototyped in this header file. These
- *    definitions provide the common interface between NuttX and the
- *    architecture-specific implementation in arch/
- *
- *    These definitions are retained in the the header file nuttx/include/arch.h
- *
- *    NOTE: up_ is supposed to stand for microprocessor; the u is like the
- *    Greek letter micron: µ. So it would be µP which is a common shortening
- *    of the word microprocessor.
- *
- * 2. Microprocessor-Specific Interfaces.
- *
- *    An interface which is unique to a certain microprocessor should be
- *    prefixed with the name of the microprocessor, for example stm32_,
- *    and be prototyped in some header file in the arch/ directories.
- *
- *    There is also a arch/<architecture>/include/<chip>/chip.h header file
- *    that can be used to communicate other microprocessor-specific
- *    information between the board logic and even application logic.
- *    Application logic may, for example, need to know specific capabilities
- *    of the chip.  Prototypes in that chip.h header file should follow the
- *    microprocessor specific naming convention.
- *
- * 3. Common Board Interfaces.
- *
- *    Any interface that is common across all boards should be prefixed
- *    with board_ and should be prototyped in this header file. These
- *    board_ definitions provide the interface between the board-level
- *    logic and the architecture-specific logic.
- *
- *    Board related declarations are retained in this header file.
- *
- *    There is also a configs/<board>/include/board.h header file that
- *    can be used to communicate other board-specific information between
- *    the architecture logic and even application logic.  Any definitions
- *    which are common between a single architecture and several boards
- *    should go in this board.h header file; this file is reserved for
- *    board-related definitions common to all architectures.
- *
- * 4. Board-Specific Interfaces.
- *
- *    Any interface which is unique to a board should be prefixed with
- *    the board name, for example stm32f4discovery_. Sometimes the board
- *    name is too long so stm32_ would be okay too. These should be
- *    prototyped in configs/<board>/src/<board>.h and should not be used
- *    outside of that board directory since board-specific definitions
- *    have no meaning outside of the board directory.
- */
 
-#ifndef __INCLUDE_NUTTX_BOARD_H
-#define __INCLUDE_NUTTX_BOARD_H
+/**
+ * @file px4flow_init.c
+ *
+ * PX4FLOW-specific early startup code.  This file implements the
+ * nsh_archinitialize() function that is called early by nsh during startup.
+ *
+ * Code here is run before the rcS script is invoked; it should start required
+ * subsystems and perform board-specific initialization.
+ */
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
+#include <px4_config.h>
+
+#include <stdbool.h>
 #include <stdint.h>
-#include <compiler.h>
-__BEGIN_DECLS
+#include <stdio.h>
+#include <debug.h>
+#include <errno.h>
+
+
+#include "board_config.h"
+#include <bsp/board.h>
+
+#include <px4_macros.h>
+
 /****************************************************************************
- * Pre-processor Definitions
+ * Pre-Processor Definitions
  ****************************************************************************/
-#define BOARD_SERIALNUMBER_SIZE 12
+
+/* Configuration ************************************************************/
+
+/* Debug ********************************************************************/
+
 /****************************************************************************
- * Public Function Prototypes
- *
- * These are all standard board interfaces that are exported from board-
- * specific logic to OS internal logic.  These should never be accessed
- * directly from application code but may be freely used within the OS
- *
+ * Protected Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
@@ -126,7 +87,10 @@ __BEGIN_DECLS
  *   may be used, for example, to initialize board-specific device drivers.
  *
  ****************************************************************************/
-void board_initialize(void);
+
+__EXPORT void board_initialize(void)
+{
+}
 
 /****************************************************************************
  * Name: board_app_initialize
@@ -138,7 +102,11 @@ void board_initialize(void);
  *
  ****************************************************************************/
 
-int board_app_initialize(void);
+__EXPORT int board_app_initialize(void)
+{
+  return 0;
+
+}
 
 
 /****************************************************************************
@@ -160,23 +128,10 @@ int board_app_initialize(void);
  *
  ****************************************************************************/
 
-int board_reset(int status);
-
-/****************************************************************************
- * Name: board_get_serialnumber
- *
- * Description:
- *   Get the Boards notion of it's unique serial number
- *
- * Input Parameters:
- *   serial - Array to hold the serial number.
- *
- * Returned Value:
- *   The length of the serial number.
- *
- ****************************************************************************/
-
-int board_get_serialnumber(uint8_t serial[BOARD_SERIALNUMBER_SIZE]);
+__EXPORT int board_reset(int status)
+{
+  return 0;
+}
 
 
 /****************************************************************************
@@ -208,7 +163,10 @@ int board_get_serialnumber(uint8_t serial[BOARD_SERIALNUMBER_SIZE]);
  *
  ****************************************************************************/
 
-void board_led_initialize(void);
+__EXPORT void board_led_initialize(void)
+{
+
+}
 
 /****************************************************************************
  * Name: board_led_on
@@ -239,7 +197,10 @@ void board_led_initialize(void);
  *
  ****************************************************************************/
 
-void board_led_on(int led);
+__EXPORT void board_led_on(int led)
+{
+
+}
 
 /****************************************************************************
  * Name: board_led_off
@@ -266,31 +227,10 @@ void board_led_on(int led);
  *
  ****************************************************************************/
 
-void board_led_off(int led);
+__EXPORT void board_led_off(int led)
+{
 
-/****************************************************************************
- * Name: board_led_rgb
- *
- * Description:
- *
- * Input Parameters:
- *
- *  red   - intensity of the red led
- *  green - intensity of the green led
- *  blue  - intensity of the blue led
- *  hz    - number of flashes per second
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V1) || defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
-#define board_led_rgb(red, green , blue, hz)
-#endif
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
-weak_function void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
-                   uint16_t hz);
-#endif
+}
 
 /****************************************************************************
  * Name: board_crashdump
@@ -317,7 +257,8 @@ weak_function void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
  *
  ****************************************************************************/
 
-void board_crashdump(uint32_t currentsp, void *tcb, uint8_t *filename,
-                     int lineno);
-__END_DECLS
-#endif /* __INCLUDE_NUTTX_BOARD_H */
+__EXPORT void board_crashdump(uint32_t currentsp, void *tcb, uint8_t *filename,
+                     int lineno)
+{
+
+}
