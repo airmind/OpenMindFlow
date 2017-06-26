@@ -252,7 +252,7 @@ void timer_update(void)
 			}
 		}
 	}
-	
+
 	/*
 	if(wark_sonar == false) {
 		GPIO_SetBits(GPIOE,GPIO_Pin_8);
@@ -711,15 +711,10 @@ int main(void)
 				if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_FLOW]))
 				{
 
-#if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), brightness,
-							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
-						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
-#else
 					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
-#endif
+
 					mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							integration_timespan, accumulated_flow_x, accumulated_flow_y,
 							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
