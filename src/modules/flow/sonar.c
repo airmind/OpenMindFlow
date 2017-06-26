@@ -99,7 +99,8 @@ bool sonar_valid = false;				/**< the mode of all sonar measurements */
   *
   * see datasheet for more info
   */
-void sonar_trigger(){
+void sonar_trigger()
+{
 	GPIO_SetBits(GPIOE, GPIO_Pin_8);
 }
 #endif
@@ -110,10 +111,10 @@ void sonar_trigger(){
 #if defined(CONFIG_ARCH_BOARD_MINDFLOW_V1)
 void TIM2_IRQHandler(void)
 {
-	if(TIM_GetITStatus(TIM2,TIM_IT_Update) != RESET){
+	if (TIM_GetITStatus(TIM2,TIM_IT_Update) != RESET) {
 		TIM_ClearITPendingBit(TIM2,TIM_IT_Update);
 		return;
-	} else {
+	} else { // ???
 		TIM_ClearITPendingBit(TIM2,TIM_IT_Update);
 		return;
 	}
@@ -125,8 +126,8 @@ void TIM2_IRQHandler(void)
 void Sonar_Handler(uint32_t TIM_Counter)
 {
 	float temp = 0.0;
-	temp = TIM_Counter * 18.7 / 10000.0;
-	if((temp > SONAR_MIN) && (temp < SONAR_MAX)) {
+	temp = TIM_Counter * 18.7 / 10.0;
+	if ((temp > SONAR_MIN*SONAR_SCALE) && (temp < SONAR_MAX*SONAR_SCALE)) {
 
 		/* it is in normal sensor range, take it */
 		last_measure_time = measure_time;
@@ -136,7 +137,11 @@ void Sonar_Handler(uint32_t TIM_Counter)
 		dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
 		valid_data = temp;
-		sonar_mode = insert_sonar_value_and_get_mode_value(valid_data);
+		// the mode filter turned out to be more problematic
+		// than using the raw value of the sonar
+		// insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+		sonar_mode = valid_data / SONAR_SCALE;
+
 		new_value = 1;
 		sonar_valid = true;
 
